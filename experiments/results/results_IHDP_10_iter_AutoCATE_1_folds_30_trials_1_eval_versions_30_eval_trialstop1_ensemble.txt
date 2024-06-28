@@ -1,0 +1,16 @@
+
+
+RESULTS
+
+
+AutoCATE
+	sqrt PEHE: 	3.98 \pm 3.19
+	MAPE:      	0.29 \pm 0.08
+	R2:        	0.58 \pm 0.14
+	AUQC:      	0.91 \pm 0.02
+
+
+Time elapsed: 471.75
+
+Namespace(dataset='IHDP', experiment_iter=10, n_folds=1, n_trials=30, n_eval_versions=1, n_eval_trials=30, ensemble='top1', seed=42, AutoCATE=True, random_forest=False, gradient_boosting=False, linear_regression=False)
+______________________________________________________________________________________

@@ -1,0 +1,16 @@
+
+
+RESULTS
+
+
+AutoCATE
+	sqrt PEHE: 	3.14 \pm 0.67
+	MAPE:      	1.57 \pm 0.48
+	R2:        	-259845393395835912574730240.00 \pm 244298731399696968398667776.00
+	AUQC:      	0.52 \pm 0.13
+
+
+Time elapsed: 3504.91
+
+Namespace(dataset='ACIC', experiment_iter=10, n_folds=1, n_trials=50, n_eval_versions=1, n_eval_trials=50, ensemble='top1', seed=42, AutoCATE=True, random_forest=False, gradient_boosting=False, linear_regression=False)
+______________________________________________________________________________________
