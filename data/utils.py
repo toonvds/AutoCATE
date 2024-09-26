@@ -35,7 +35,7 @@ def load_twins():
     t = full_df['T'].to_numpy()
     yf = full_df['yf'].to_numpy()
 
-    ite = full_df['y1'] - full_df['y0']
+    ite = (full_df['y1'] - full_df['y0']).to_numpy()
 
     return X, t, yf, ite
 
@@ -102,3 +102,38 @@ def load_news_iteration(iteration=0):
     ite = y1 - y0
 
     return X, t, yf, ite
+
+
+def load_hillstrom():
+    full_df = pd.read_csv("data/Hillstrom/MineThatData.csv")
+
+    full_df["history_segment"] = full_df["history_segment"].map({
+        '1) $0 - $100': 50,
+        '2) $100 - $200': 150,
+        '3) $200 - $350': 275,
+        '4) $350 - $500': 425,
+        '5) $500 - $750': 575,
+        '6) $750 - $1,000': 825,
+        '7) $1,000 +': 1000,
+    })
+
+    cat_vars = ["history_segment", "zip_code", "channel"]
+
+    full_df = pd.get_dummies(full_df, columns=cat_vars)
+
+    X = full_df.drop(['segment', 'visit', 'conversion', 'spend'], axis='columns').to_numpy()
+    t = full_df["segment"].apply(lambda x: 0 if x == 'No E-Mail' else 1).to_numpy().astype("float")  # 1 if e-mail received
+    yf = full_df['visit'].to_numpy().astype("float")
+
+    return X, t, yf
+
+
+def load_information():
+    full_df = pd.read_csv("data/Information/Information.csv")
+    full_df = full_df.drop(['UNIQUE_ID'], axis=1)
+
+    X = full_df.drop(['TREATMENT', 'PURCHASE'], axis='columns').to_numpy()
+    t = full_df['TREATMENT'].to_numpy().astype("float")
+    yf = full_df['PURCHASE'].to_numpy().astype("float")
+
+    return X, t, yf

@@ -84,7 +84,8 @@ class DREvaluator(_BaseEvaluator):
         # return np.mean(dr_pseudos, axis=0)
 
     def score(self, cate_pred):
-        return self.metric(self.pseudo_outcomes, cate_pred)
+        nan_mask = np.isnan(self.pseudo_outcomes)
+        return self.metric(self.pseudo_outcomes[~nan_mask], cate_pred[~nan_mask])
 
 
 class REvaluator(_BaseEvaluator):
@@ -110,7 +111,8 @@ class REvaluator(_BaseEvaluator):
         return r_pseudos, r_weights
 
     def score(self, cate_pred):
-        return self.metric(self.pseudo_outcomes, cate_pred, sample_weight=self.weights)
+        nan_mask = np.isnan(self.pseudo_outcomes)
+        return self.metric(self.pseudo_outcomes[~nan_mask], cate_pred[~nan_mask], sample_weight=self.weights[~nan_mask])
         # r_scores = []
         # for mu_pred, t_pred in zip(self.outcome_estimates, self.propensity_estimates):
         #     # Create R pseudo-outcome:
@@ -178,7 +180,8 @@ class ZEvaluator(_BaseEvaluator):
         return z_pseudo
 
     def score(self, cate_pred):
-        return self.metric(self.pseudo_outcomes, cate_pred)
+        nan_mask = np.isnan(self.pseudo_outcomes)
+        return self.metric(self.pseudo_outcomes[~nan_mask], cate_pred[~nan_mask])
 
 
 class NNEvaluator(_BaseEvaluator):
@@ -211,26 +214,8 @@ class NNEvaluator(_BaseEvaluator):
         return ite_nn
 
     def score(self, cate_pred):
-        return self.metric(self.pseudo_outcomes, cate_pred)
-        # y_cf = np.zeros_like(y)
-        # y_cf[t == 0] = self.nn1.predict(X[t == 0])
-        # y_cf[t == 1] = self.nn0.predict(X[t == 1])
-        #
-        # ite_nn = np.zeros_like(y)
-        # ite_nn[t == 0] = y_cf[t == 0] - y[t == 0]
-        # ite_nn[t == 1] = y[t == 1] - y_cf[t == 1]
-
-        # plt.plot(ite_nn, cate_pred, linestyle='None', marker='o')
-        # plt.title(r2_score(ite_nn, cate_pred))
-        # plt.show()
-
-        # return np.mean((ite_nn - cate_pred) ** 2)
-        # return np.mean(np.abs(ite_nn - cate_pred))
-        # Return correlation coefficient between ite_nn and cate_pred
-        # return -np.corrcoef(ite_nn, cate_pred[:, 0] + np.random.normal(0, 1e-8, size=ite_nn.shape))[0, 1]
-        # return r2_score(ite_nn, cate_pred)
-        # return self.metric(ite_nn, cate_pred)
-        # return mean_absolute_percentage_error(ite_nn, cate_pred)
+        nan_mask = np.isnan(self.pseudo_outcomes)
+        return self.metric(self.pseudo_outcomes[~nan_mask], cate_pred[~nan_mask])
 
 
 class UEvaluator(_BaseEvaluator):
@@ -263,7 +248,8 @@ class UEvaluator(_BaseEvaluator):
         # return np.mean(u_scores, axis=0)
 
     def score(self, cate_pred):
-        return self.metric(self.pseudo_outcomes, cate_pred)
+        nan_mask = np.isnan(self.pseudo_outcomes)
+        return self.metric(self.pseudo_outcomes[~nan_mask], cate_pred[~nan_mask])
         # u_pseudos = []
         # for mu_pred, t_pred in zip(self.outcome_estimates, self.propensity_estimates):
         #     t_pred = np.clip(t_pred[val_indices], CLIP, 1 - CLIP)
@@ -305,7 +291,8 @@ class FEvaluator(_BaseEvaluator):
         # return np.mean(f_pseudos, axis=0)
 
     def score(self, cate_pred):
-        return self.metric(self.pseudo_outcomes, cate_pred)
+        nan_mask = np.isnan(self.pseudo_outcomes)
+        return self.metric(self.pseudo_outcomes[~nan_mask], cate_pred[~nan_mask])
 
 
 class TEvaluator(_BaseEvaluator):
@@ -326,7 +313,8 @@ class TEvaluator(_BaseEvaluator):
         return pseudo_outcome
 
     def score(self, cate_pred):
-        return self.metric(self.pseudo_outcomes, cate_pred)
+        nan_mask = np.isnan(self.pseudo_outcomes)
+        return self.metric(self.pseudo_outcomes[~nan_mask], cate_pred[~nan_mask])
 
 
 class IFEvaluator(_BaseEvaluator):
@@ -357,4 +345,4 @@ class IFEvaluator(_BaseEvaluator):
                            self.b_term * self.y_factual * (self.pseudo_outcomes - cate_pred) -
                            self.d_term * (self.pseudo_outcomes - cate_pred) ** 2 + cate_pred ** 2)
 
-        return np.mean(objective_value)
+        return np.nanmean(objective_value)
