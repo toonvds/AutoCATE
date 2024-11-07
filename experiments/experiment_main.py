@@ -30,7 +30,7 @@ parser.add_argument('--n_folds', type=int, default=1, help='Number of folds for 
 parser.add_argument('--n_trials', type=int, default=50, help='Number of trials for the hyperparameter optimization.')
 parser.add_argument('--n_eval_versions', type=int, default=1, help='Number of evaluation versions.')
 parser.add_argument('--n_eval_trials', type=int, default=50, help='Number of trials for the evaluation.')
-parser.add_argument('--ensemble', type=str, default="top5average", help='Ensemble method to use.')
+parser.add_argument('--ensemble', type=str, default="top1average", help='Ensemble method to use.')
 parser.add_argument('--seed', type=int, default=42, help='Random seed.')
 parser.add_argument('--AutoCATE', action=argparse.BooleanOptionalAction, help='Run AutoCATE.')
 parser.set_defaults(AutoCATE=True)

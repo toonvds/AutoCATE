@@ -49,10 +49,10 @@ class AutoCATE():
                 #                    "QuantileTransformer"]
             }
         if base_learners is None:
-            # base_learners = ["GB"]
+            base_learners = ["GB"]
             # base_learners = ["DT", "LR"]  # Fast learners
             # base_learners = ["RF", "GB", "ET"]  # Complex, relatively fast models
-            base_learners = ["RF", "GB", "ET", "NN"]  # Complex models (Best)
+            # base_learners = ["RF", "GB", "ET", "NN"]  # Complex models (Best)
             # base_learners = ["RF", "GB", "ET", "NN", "LR", "DT"]  # Good options
             # base_learners = ["RF", "LR", "GB", "ET", "NN", "GP", "SVM", "kNN", "DT"]  # All models
         if evaluation_metrics is None:
@@ -60,9 +60,9 @@ class AutoCATE():
             evaluation_metrics = ["T"]
             # evaluation_metrics = ["kNN", "R", "DR", "Z", "U", "F", "T", "IF"]  # All options
         if metalearners is None:
-            # metalearners = ["T"]
+            metalearners = ["T"]
             # metalearners = ["S", "T", "Lo"]  # Fast options
-            metalearners = ["S", "T", "X", "DR", "Lo", "RA"]  # Selected options (Best)
+            # metalearners = ["S", "T", "X", "DR", "Lo", "RA"]  # Selected options (Best)
             # metalearners = ["S", "T", "X", "DR", "R", "Lo", "U", "F", "Z", "RA"]  # All options
 
         self.preprocessors = preprocessors
