@@ -1,5 +1,7 @@
 # AutoCATE: End-to-End, Automated Treatment Effect Estimation
 
+![AutoCATE Logo](assets/AutoCATE Logo Name.jpg)
+
 🚀 **AutoCATE** is an open-source Python package for automated, end-to-end estimation of Conditional Average Treatment Effects (CATE). Designed to simplify the complexities of causal inference, AutoCATE enables practitioners and researchers to quickly build robust ML pipelines for causal effect/heterogeneous treatment effect estimation in only *four lines of code*.
 
 ## ✨ Key Features
