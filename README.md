@@ -15,13 +15,26 @@
 **AutoCATE** is an open-source Python package for automated, end-to-end estimation of Conditional Average Treatment Effects (CATE). Designed to simplify the complexities of causal inference, AutoCATE enables practitioners and researchers to quickly build robust ML pipelines for causal effect/heterogeneous treatment effect estimation in only *four lines of code*.
 
 ## ✨ Key Features
-✔️ **Automated ML Pipelines**: Automatically builds pipelines and handles preprocessing, ML algorithm selection and hyperparameter optimization.
+✔️ **Automated ML Pipelines**: Automatically builds pipelines and handles preprocessing, ML algorithm selection, hyperparameter optimization, and ensembling.
 
 ✔️ **Custom Evaluation Protocols**: Incorporates different risk measures (e.g., DR-risk, T-risk) and risk metrics (e.g., AUQC) tailored for causal inference.
 
-✔️ **Flexible Ensemble Methods**: Selects and combines the optimal pipelines for improved robustness and accuracy.
-
 ✔️ **Low-Code API**: Effortlessly predict treatment effects with minimal setup.
+
+## 🛠 Quick start
+
+```python
+from src.AutoCATE import AutoCATE
+
+# Initialize AutoCATE
+autocate = AutoCATE()
+
+# Fit model on training data
+autocate.fit(X_train, t_train, yf_train)
+
+# Predict CATE for new data
+cate_pred = autocate.predict(X_test)
+```
 
 ## ⚙️ How It Works
 AutoCATE operates in three stages:
@@ -43,18 +56,3 @@ Estimating causal effects requires dealing with **unique challenges** 🚨
   ❌ No clear, established practices for preprocessing and ensembling.
 
 AutoCATE eliminates these barriers by **automating the entire process**, making state-of-the-art CATE estimation accessible for everyone.
-
-## 🛠 Quick start
-
-```python
-from src.AutoCATE import AutoCATE
-
-# Initialize AutoCATE
-autocate = AutoCATE()
-
-# Fit model on training data
-autocate.fit(X_train, t_train, yf_train)
-
-# Predict CATE for new data
-cate_pred = autocate.predict(X_test)
-```
