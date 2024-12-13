@@ -1,8 +1,9 @@
-# AutoCATE: End-to-End, Automated Treatment Effect Estimation
+![AutoCATE Logo Name](https://github.com/user-attachments/assets/2d84a0cb-2fa8-4e4d-b44b-d6537923dfa8)
 
-![AutoCATE Logo](assets/AutoCATE Logo Name.jpg)
+# <img src="https://github.com/user-attachments/assets/68df5970-4d10-493b-8f6a-ba793270bffc" alt="AutoCATE Logo" width="25"> AutoCATE: End-to-End, Automated Treatment Effect Estimation
 
-🚀 **AutoCATE** is an open-source Python package for automated, end-to-end estimation of Conditional Average Treatment Effects (CATE). Designed to simplify the complexities of causal inference, AutoCATE enables practitioners and researchers to quickly build robust ML pipelines for causal effect/heterogeneous treatment effect estimation in only *four lines of code*.
+**AutoCATE** is an open-source Python package for automated, end-to-end estimation of Conditional Average Treatment Effects (CATE). Designed to simplify the complexities of causal inference, AutoCATE enables practitioners and researchers to quickly build robust ML pipelines for causal effect/heterogeneous treatment effect estimation in only *four lines of code*.
+![AutoCATE Logo]()
 
 ## ✨ Key Features
 ✔️ **Automated ML Pipelines**: Automatically builds pipelines and handles preprocessing, ML algorithm selection and hyperparameter optimization.
@@ -24,15 +25,15 @@ AutoCATE operates in three stages:
 
 ## ❓ Why Choose AutoCATE?
 
-🚨 Estimating causal effects requires dealing with **unique challenges**:
+Estimating causal effects requires dealing with **unique challenges** 🚨 
 
-❌ Evaluation is a challenge due to lack of ground truth CATE and covariate shift caused by confounding variables.
+  ❌ Evaluation is a challenge due to lack of ground truth CATE and covariate shift caused by confounding variables.
 
-❌ Causal metalearners combine different ML algorithms and are complex to tune.
+  ❌ Causal metalearners combine different ML algorithms and are complex to tune.
 
-❌ No clear, established practices for preprocessing and ensembling.
+  ❌ No clear, established practices for preprocessing and ensembling.
 
-🎯 AutoCATE eliminates these barriers by **automating the entire process**, making state-of-the-art CATE estimation accessible for everyone.
+AutoCATE eliminates these barriers by **automating the entire process**, making state-of-the-art CATE estimation accessible for everyone.
 
 ## 🛠 Quick start
 
