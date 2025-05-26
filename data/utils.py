@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 from scipy import sparse
+from scipy.special import expit
 
 
 # Load IHDP data
@@ -137,3 +138,27 @@ def load_information():
     yf = full_df['PURCHASE'].to_numpy().astype("float")
 
     return X, t, yf
+
+
+def load_synthetic(gamma, seed=42, size=1000, dimensions=5):
+    np.random.seed(seed)
+
+    # We generate synthetic data
+    X = np.random.normal(0, 1, size=(size, dimensions))
+
+    # Generate the potential outcomes
+    coef_y0 = np.random.uniform(-1, 1, size=[dimensions])
+    coef_y1 = np.random.uniform(-1, 1, size=[dimensions])
+    y0 = np.sin(np.matmul(X, coef_y0)) + np.random.normal(0, 0.1, size=[size])
+    y1 = y0 + (np.matmul(X, coef_y1)) + np.random.normal(0, 0.1, size=[size]) ** 2
+
+    # Generate the treatment assignment
+    coef_t = np.random.uniform(-1, 1, size=[dimensions])
+    prob_treat = expit(gamma * np.matmul(X, coef_t))
+    t = np.random.binomial(1, prob_treat, size=[size])
+
+    # Generate the observed outcome (yf) and cate/ite
+    yf = t * y1 + (1 - t) * y0
+    ite = y1 - y0
+
+    return X, t, yf, ite
