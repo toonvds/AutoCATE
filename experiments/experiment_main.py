@@ -5,7 +5,7 @@ Author: Toon Vanderschueren
 
 import time
 import argparse
-from data.utils import load_ihdp_iteration, load_twins, load_acic_iteration, load_news_iteration
+from data.utils import load_ihdp_iteration, load_twins, load_acic_iteration, load_news_iteration, load_synthetic
 
 import numpy as np
 from scipy.stats import sem
@@ -24,37 +24,38 @@ from src.AutoCATE.utils import auc_qini, SingleSplit
 
 # Read arguments from parser
 parser = argparse.ArgumentParser(description='Run AutoCATE on various data sets.')
-parser.add_argument('--dataset', type=str, default='IHDP', help='Dataset to run AutoCATE on.')
-parser.add_argument('--experiment_iter', type=int, default=100, help='Number of experiments to run.')
+parser.add_argument('--dataset', type=str, default='Synthetic', help='Dataset to run AutoCATE on.')
+parser.add_argument('--experiment_iter', type=int, default=10, help='Number of experiments to run.')
 parser.add_argument('--n_folds', type=int, default=1, help='Number of folds for the cross-validation.')
 parser.add_argument('--n_trials', type=int, default=50, help='Number of trials for the hyperparameter optimization.')
 parser.add_argument('--n_eval_versions', type=int, default=1, help='Number of evaluation versions.')
 parser.add_argument('--n_eval_trials', type=int, default=50, help='Number of trials for the evaluation.')
 parser.add_argument('--ensemble', type=str, default="top1average", help='Ensemble method to use.')
 parser.add_argument('--seed', type=int, default=42, help='Random seed.')
+parser.add_argument('--gamma', type=int, default=0, help='Confounding strength for the synthetic data.')
 parser.add_argument('--AutoCATE', action=argparse.BooleanOptionalAction, help='Run AutoCATE.')
-parser.set_defaults(AutoCATE=True)
-parser.add_argument('--eval_metrics', '--names-list', default=["kNN"], nargs='+',
+parser.set_defaults(AutoCATE=False)
+parser.add_argument('--eval_metrics', '--names-list', default=["T"], nargs='+',
                     help='The evaluation measures to use.')  # ["kNN", "R", "DR", "Z", "U", "F", "T"]  # ["kNN", "R", "DR", "Z", "U", "F", "T", "IF"]
 parser.add_argument('--holdout_ratio', type=float, default=0.3, help='Ratio of data to use for validation.')
 parser.add_argument('--s_random_forest', action=argparse.BooleanOptionalAction,
                     help='Run Random Forest S-Learner.')
-parser.set_defaults(s_random_forest=False)
+parser.set_defaults(s_random_forest=True)
 parser.add_argument('--s_gradient_boosting', action=argparse.BooleanOptionalAction,
                     help='Run Gradient Boosting S-Learner.')
-parser.set_defaults(s_gradient_boosting=False)
+parser.set_defaults(s_gradient_boosting=True)
 parser.add_argument('--s_linear_regression', action=argparse.BooleanOptionalAction,
                     help='Run Linear Regression S-Learner.')
-parser.set_defaults(s_linear_regression=False)
+parser.set_defaults(s_linear_regression=True)
 parser.add_argument('--t_random_forest', action=argparse.BooleanOptionalAction,
                     help='Run Random Forest T-Learner.')
-parser.set_defaults(t_random_forest=False)
+parser.set_defaults(t_random_forest=True)
 parser.add_argument('--t_gradient_boosting', action=argparse.BooleanOptionalAction,
                     help='Run Gradient Boosting T-Learner.')
-parser.set_defaults(t_gradient_boosting=False)
+parser.set_defaults(t_gradient_boosting=True)
 parser.add_argument('--t_linear_regression', action=argparse.BooleanOptionalAction,
                     help='Run Linear Regression T-Learner.')
-parser.set_defaults(t_linear_regression=False)
+parser.set_defaults(t_linear_regression=True)
 args = parser.parse_args()
 
 np.random.seed(42)
@@ -143,6 +144,11 @@ for dataset_iter in range(args.experiment_iter):  # For testing purposes
 
         X_train, X_test, t_train, _, yf_train, _, _, ite_test = train_test_split(X, t, yf, ite, test_size=0.3,
                                                                                  random_state=42)
+    elif args.dataset == 'Synthetic':
+        X, t, yf, ite = load_synthetic(gamma=args.gamma, seed=dataset_iter)
+
+        X_train, X_test, t_train, _, yf_train, _, _, ite_test = train_test_split(X, t, yf, ite, test_size=0.3,
+                                                                                 random_state=42)
     else:
         raise ValueError("Dataset not implemented.")
 
@@ -156,7 +162,7 @@ for dataset_iter in range(args.experiment_iter):  # For testing purposes
         autocate = AutoCATE(n_folds=args.n_folds, n_trials=args.n_trials, n_eval_versions=args.n_eval_versions,
                             n_eval_trials=args.n_eval_trials, ensemble_strategy=args.ensemble,
                             evaluation_metrics=args.eval_metrics, seed=args.seed,
-                            task=task, holdout_ratio=args.holdout_ratio, n_jobs=-1, metric="AUQC")  # AUQC for uplift
+                            task=task, holdout_ratio=args.holdout_ratio, n_jobs=-1)
         autocate.fit(X_train, t_train, yf_train)
         ite_pred = autocate.predict(X_test)
 
@@ -468,6 +474,8 @@ print('\n\nTime elapsed: ', np.round(time.time() - start, 2))
 # Write the results to a txt file:
 title = "experiments/results/results_"
 title += str(args.dataset) + '_' + str(args.experiment_iter) + '_iter_'
+if args.dataset == "Synthetic":
+    title += 'gamma_' + str(args.gamma) + '_'
 if args.AutoCATE:
     title += "AutoCATE_"
 if args.s_random_forest:
@@ -539,3 +547,4 @@ with open(title + '.txt', 'w') as f:
 
     f.write("\n" + str(args))
     f.write("\n______________________________________________________________________________________\n")
+
