@@ -5,6 +5,7 @@ import time
 import matplotlib.pyplot as plt
 
 from scipy.stats import zscore
+from scipy.special import softmax
 from sklearn.model_selection import StratifiedKFold, GridSearchCV, cross_val_predict, train_test_split
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.utils._testing import ignore_warnings
@@ -13,7 +14,7 @@ from sklearn.exceptions import ConvergenceWarning
 from src.AutoCATE.preprocessors import get_preprocess_pipeline
 from src.AutoCATE.baselearners import get_base_learner
 from src.AutoCATE.evaluators import (DREvaluator, REvaluator, NNEvaluator, ZEvaluator, UEvaluator, FEvaluator,
-                                     TEvaluator, IFEvaluator)
+                                     TEvaluator, IFEvaluator, _get_metric)
 from src.AutoCATE.metalearners import metalearner_collector
 from src.AutoCATE.utils import (ContStratifiedKFold, ContStratifiedKFoldWithTreatment, ConstrainedRegressor,
                                 SingleStratifiedSplitWithTreatment)
@@ -22,11 +23,47 @@ from src.AutoCATE.utils import (ContStratifiedKFold, ContStratifiedKFoldWithTrea
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 
-class AutoCATE():
+class AutoCATE:
+    """
+    The AutoCATE class is the main class of the AutoCATE package. The fit method is used to automatically construct,
+    train and evaluate an ML pipeline for treatment effect estimation. The predict method can be used to predict the
+    treatment effect for new samples.
+
+    AutoCATE can be configured to use different evaluation metrics, preprocessors, base learners, metalearners, ensemble
+    strategies, etc. The class can be used for both regression and classification tasks.
+
+    Optimization is based on the Optuna library for hyperparameter optimization.
+    """
     def __init__(self, evaluation_metrics=None, preprocessors=None, base_learners=None, metalearners=None,
                  task="regression", metric="MSE", ensemble_strategy="top1average", single_base_learner=False,
-                 joint_optimization=False, n_folds=1, n_trials=50, n_eval_versions=1, n_eval_trials=50, seed=42,
+                 joint_optimization=False, n_folds=1, n_trials=5, n_eval_versions=1, n_eval_trials=5, seed=42,
                  visualize=False, max_time=None, n_jobs=-1, cross_val_predict_folds=1, holdout_ratio=0.3):
+        """
+        Initialize the AutoCATE object.
+        :param evaluation_metrics: Which risk measure should be used (e.g. T-risk)?
+        :param preprocessors: Which preprocessing algorithms should be included in the search? See preprocessors.py for
+        more information.
+        :param base_learners: Which base ML algorithms should be included in the search? See baselearners.py for more
+        information.
+        :param metalearners: Which causal metalearners should be included in the search? See metalearners.py for more
+        information.
+        :param task: Regression or classification task?
+        :param metric: Which evaluation measure to use (e.g. MSE)?
+        :param ensemble_strategy: Which ensemble strategy to use? Possible inputs are 'pareto', 'top1average',
+        'top5average', 'top1distance', 'top5distance', 'top1ranking', 'top5ranking', and 'stacking'.
+        :param single_base_learner: Should all baselearners used in a metalearner be the same?
+        :param joint_optimization: Should all baselearners use the same hyperparameters?
+        :param n_folds: Number of folds for cross-validation.
+        :param n_trials: Number of trials for the hyperparameter optimization.
+        :param n_eval_versions: Number of top models used to create risk measures.
+        :param n_eval_trials: Number of trials to train the evaluation models.
+        :param seed: Random seed.
+        :param visualize: Whether intermediary results need to be visualized.
+        :param max_time: Maximum time per search in seconds.
+        :param n_jobs: Number of parallel jobs. This is only used for sklearn models, not for optuna.
+        :param cross_val_predict_folds: Number of folds for out-of-fold predictions.
+        :param holdout_ratio: Ratio of the data used for holdout validation. Only used if n_folds == 1.
+        """
 
         print('Jobs:', n_jobs, '(only used for sklearn; not optuna).')
         print('Max time per study:', max_time, 'seconds.')
@@ -39,31 +76,35 @@ class AutoCATE():
 
         if preprocessors is None:
             preprocessors = {
-                "feature_selector": ["EmptyStep", "VarianceThreshold", "SelectPercentile"],
+                # "feature_selector": ["EmptyStep"],  # None
+                "feature_selector": ["EmptyStep", "VarianceThreshold", "SelectPercentile"],  # Selected options
                 # "feature_selector": ["EmptyStep", "VarianceThreshold", "SelectPercentile", "PCA", "KernelPCA",
-                #                      "FastICA"]
-                "feature_transformer": ["EmptyStep"],
+                #                      "FastICA"]  # All options
+                "feature_transformer": ["EmptyStep"],  # None
                 # "feature_transformer": ["EmptyStep", "SplineTransformer", "PolynomialFeatures", "KBinsDiscretizer"]
-                "feature_scaler": ["EmptyStep", "StandardScaler", "RobustScaler"],
+                # "feature_scaler": ["EmptyStep"],  # None
+                "feature_scaler": ["EmptyStep", "StandardScaler", "RobustScaler"],  # Selected options
                 # "feature_scaler": ["EmptyStep", "StandardScaler", "MinMaxScaler", "RobustScaler", "PowerTransformer",
-                #                    "QuantileTransformer"]
+                #                    "QuantileTransformer"]  # All options
             }
         if base_learners is None:
-            base_learners = ["GB"]
+            # base_learners = ["GB"]
+            # base_learners = ["LR"]
             # base_learners = ["DT", "LR"]  # Fast learners
             # base_learners = ["RF", "GB", "ET"]  # Complex, relatively fast models
-            # base_learners = ["RF", "GB", "ET", "NN"]  # Complex models (Best)
+            base_learners = ["RF", "GB", "ET", "NN"]  # Complex models (BestBase)
             # base_learners = ["RF", "GB", "ET", "NN", "LR", "DT"]  # Good options
-            # base_learners = ["RF", "LR", "GB", "ET", "NN", "GP", "SVM", "kNN", "DT"]  # All models
+            # base_learners = ["RF", "LR", "GB", "ET", "NN", "GP", "SVM", "kNN", "DT"]  # All models (AllBase)
         if evaluation_metrics is None:
             # evaluation_metrics = ["kNN"]
             evaluation_metrics = ["T"]
             # evaluation_metrics = ["kNN", "R", "DR", "Z", "U", "F", "T", "IF"]  # All options
         if metalearners is None:
-            metalearners = ["T"]
+            # metalearners = ["T"]
+            # metalearners = ["S"]
             # metalearners = ["S", "T", "Lo"]  # Fast options
-            # metalearners = ["S", "T", "X", "DR", "Lo", "RA"]  # Selected options (Best)
-            # metalearners = ["S", "T", "X", "DR", "R", "Lo", "U", "F", "Z", "RA"]  # All options
+            metalearners = ["S", "T", "X", "DR", "Lo", "RA"]  # Selected options (BestMeta)
+            # metalearners = ["S", "T", "X", "DR", "R", "Lo", "U", "F", "Z", "RA"]  # All options (AllMeta)
 
         self.preprocessors = preprocessors
         self.evaluation_metrics = evaluation_metrics
@@ -74,9 +115,9 @@ class AutoCATE():
         # Set optimization direction
         self.opt_direction = "maximize" if metric in ["AUQC"] else "minimize"
         assert ensemble_strategy in ["pareto", "top1average", "top5average", "top1distance", "top5distance",
-                                     "top1ranking", "top5ranking", "stacking"], AssertionError(
+                                     "top1ranking", "top5ranking", "stacking", "stacking_softmax"], AssertionError(
             "Ensemble strategy must be one of 'pareto', 'top1average', 'top5average', 'top1distance',  'top5distance', "
-            "'top1ranking', 'top5ranking', or 'stacking'.")
+            "'top1ranking', 'top5ranking', 'stacking' or , 'stacking_softmax'.")
         self.ensemble_strategy = ensemble_strategy
         self.joint_optimization = joint_optimization
         self.single_base_learner = single_base_learner
@@ -142,6 +183,14 @@ class AutoCATE():
         self._build_ensemble(X, t, y)
 
     def predict(self, X, agg="mean"):
+        """
+        Predict the treatment effect for new samples.
+
+        :param X: Instance features.
+        :param agg: When an ensemble is used, how to aggregate the predictions? Options are 'mean' and 'median'.
+        :return: Predicted conditional average treatment effects for the new samples.
+        """
+
         print('\nPredicting...')
         taus = []
         for prop_model, preprocess_pipeline, model in zip(
@@ -161,7 +210,7 @@ class AutoCATE():
         #     print('\tConstant tau predictions detected. Returning the same value for all samples.')
 
         # Add weighting if necessary
-        if self.ensemble_strategy == "stacking":
+        if self.ensemble_strategy == "stacking" or self.ensemble_strategy == "stacking_softmax":
             taus = np.array(taus)
             taus = np.average(taus, axis=0, weights=self.weights)
 
@@ -173,6 +222,14 @@ class AutoCATE():
                 return np.median(taus, axis=0)[:, 0]
 
     def _get_evaluators(self, X, t, y):
+        """
+        Function to search the best model(s) underlying the risk measure(s). This is an internal function that is called
+        by the fit method.
+
+        :param X: features
+        :param t: treatment
+        :param y: outcome
+        """
         @ignore_warnings(category=ConvergenceWarning)
         def prop_objective(trial, X_eval, t_eval):
             # Define the search space for the propensity model
@@ -394,10 +451,6 @@ class AutoCATE():
                     outcome1_model = outcome1_model_list[i]
                     outcome1_estimates_fold.append(outcome1_model.predict(X_val))
 
-            #     outcome0_estimates_fold.append(np.mean(outcome0_ensemble))
-            #     outcome1_estimates_fold.append(np.mean(outcome1_ensemble))
-            # outcome0_estimates.append(outcome0_estimates_fold)
-            # outcome1_estimates.append(outcome1_estimates_fold)
                 outcome0_estimates.append(outcome0_estimates_fold)
                 outcome1_estimates.append(outcome1_estimates_fold)
 
@@ -550,7 +603,14 @@ class AutoCATE():
                       evaluator)
 
     def _get_estimators(self, X, t, y):
-        # Search over different options for the CATE estimation pipeline
+        """
+        Function to search over different options for the CATE estimation pipeline. This is an internal function that is
+        called by the fit method.
+
+        :param X: features
+        :param t: treatment
+        :param y: outcome
+        """
         @ignore_warnings(category=ConvergenceWarning)
         def objective(trial):
             # Choose preprocessing pipeline and output scaler
@@ -583,16 +643,19 @@ class AutoCATE():
                     prop_model = CalibratedClassifierCV(prop_model, cv=self.n_folds if self.n_folds > 1 else 2,
                                                         method=trial.suggest_categorical("method",
                                                                                          ["sigmoid", "isotonic"]))
-
-                    X_train_trans = preprocess_pipeline.fit_transform(X_train, y_train)
-                    if self.cross_val_predict_folds == 1:
-                        prop_model.fit(X_train_trans, t_train)
-                        prop_est_train = prop_model.predict_proba(X_train_trans)[:, 1]
-                    else:
-                        skf = StratifiedKFold(n_splits=self.cross_val_predict_folds)
-                        prop_est_train = cross_val_predict(prop_model, X_train_trans, t_train, cv=skf,
-                                                           method="predict_proba")[:, 1]
-                    prop_est_train = np.clip(prop_est_train, self.CLIP, 1 - self.CLIP)
+                    try:
+                        X_train_trans = preprocess_pipeline.fit_transform(X_train, y_train)
+                        if self.cross_val_predict_folds == 1:
+                            prop_model.fit(X_train_trans, t_train)
+                            prop_est_train = prop_model.predict_proba(X_train_trans)[:, 1]
+                        else:
+                            skf = StratifiedKFold(n_splits=self.cross_val_predict_folds)
+                            prop_est_train = cross_val_predict(prop_model, X_train_trans, t_train, cv=skf,
+                                                               method="predict_proba")[:, 1]
+                        prop_est_train = np.clip(prop_est_train, self.CLIP, 1 - self.CLIP)
+                    except Exception as e:
+                        print(f"\tTrial failed due to {e}")
+                        return
 
                 try:
                     # Fit the base learner
@@ -670,6 +733,14 @@ class AutoCATE():
         self.study = study
 
     def _build_ensemble(self, X, t, y):
+        """
+        Function to build the final ensemble of models. This is an internal function that is called by the fit method.
+
+        :param X: features
+        :param t: treatment
+        :param y: outcome
+        """
+
         start = time.time()
         if self.ensemble_strategy == "pareto":
             print("\t", len(self.study.best_trials), "best trials found.")
@@ -791,8 +862,8 @@ class AutoCATE():
             print("\tBest prop model:\n", self.best_prop_models)
             print("\tBest preprocess pipeline:\n", self.best_preprocess_pipelines)
             print("\tBest model:\n", self.best_models)
-        elif self.ensemble_strategy == "stacking":
-            # Get and fit all best models:
+        elif self.ensemble_strategy == "stacking" or self.ensemble_strategy == "stacking_softmax":
+            # Get and fit all models:
             self.best_preprocess_pipelines, self.best_prop_models, self.best_models = [], [], []
 
             # for trial in self.study.best_trials:
@@ -855,80 +926,66 @@ class AutoCATE():
                 plt.show()
 
             # Train linear regression on top of all models:
-            reg_alphas = [1e-4, 1e-3, 1e-2, 1e-1, 1, 1e1, 1e2, 1e3, 1e4]
-            weights = []
-            for i in range(self.n_folds):
-                for j in range(evaluator_pseudo_outcomes.shape[1]):
-                    skf = ContStratifiedKFold(n_splits=5)
-                    # stacking_regressor = ElasticNetCV(fit_intercept=False, cv=skf, positive=True)
-                    stacking_regressor = ConstrainedRegressor()
-                    grid_search = GridSearchCV(stacking_regressor, param_grid={'reg_alpha': reg_alphas}, cv=skf,
-                                               n_jobs=self.n_jobs)
-                    grid_search.fit(X=model_estimates[i, :, :].T, y=evaluator_pseudo_outcomes[i, j, :],
-                                    sample_weight=evaluator_weights[i][j])
+            if self.ensemble_strategy == "stacking":
+                reg_alphas = [1e-4, 1e-3, 1e-2, 1e-1, 1, 1e1, 1e2, 1e3, 1e4]
+                weights = []
+                for i in range(self.n_folds):
+                    for j in range(evaluator_pseudo_outcomes.shape[1]):
+                        skf = ContStratifiedKFold(n_splits=5)
+                        # stacking_regressor = ElasticNetCV(fit_intercept=False, cv=skf, positive=True)
+                        stacking_regressor = ConstrainedRegressor()
+                        grid_search = GridSearchCV(stacking_regressor, param_grid={'reg_alpha': reg_alphas}, cv=skf,
+                                                   n_jobs=self.n_jobs)
+                        grid_search.fit(X=model_estimates[i, :, :].T, y=evaluator_pseudo_outcomes[i, j, :],
+                                        sample_weight=evaluator_weights[i][j])
 
-                    weights.append(grid_search.best_estimator_.coef_)
+                        weights.append(grid_search.best_estimator_.coef_)
 
-            self.weights = np.mean(weights, axis=0)
+                self.weights = np.mean(weights, axis=0)
 
-            print("\tEnsemble weights:", np.round(self.weights, 2))
-            print('\t', 'Time to build ensemble:', np.round(time.time() - start, 2), 'seconds')
+            elif self.ensemble_strategy == "stacking_softmax":
+                kappas_grid = [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1, 1e1, 1e2, 1e3, 1e4, 1e5]
+                weights = []
+
+                # Get the evaluation metric
+                metric_function = _get_metric(self.metric)
+
+                for i in range(self.n_folds):
+                    for j in range(evaluator_pseudo_outcomes.shape[1]):
+                        # Get each model's metric value
+                        metric_values = []
+                        for model_counter in range(len(self.best_models)):
+                            metric_values.append(metric_function(model_estimates[i, model_counter, :],
+                                                                 evaluator_pseudo_outcomes[i, j, :]))
+                        metric_values = np.array(metric_values)
+
+                        # Get the best kappa
+                        stacked_kappa_metric = []
+                        for kappa in kappas_grid:
+                            weights_kappa = softmax(kappa * metric_values)
+
+                            stacked_prediction = np.dot(weights_kappa, model_estimates[i, :, :])
+
+                            # Get the metric value
+                            stacked_kappa_metric.append(
+                                metric_function(stacked_prediction, evaluator_pseudo_outcomes[i, j, :]))
+
+                        # Get the weights for the best kappa
+                        if self.opt_direction == "maximize":
+                            best_kappa = kappas_grid[np.argmax(stacked_kappa_metric)]
+                        else:
+                            best_kappa = kappas_grid[np.argmin(stacked_kappa_metric)]
+
+                        weights.append(softmax(best_kappa * metric_values))
+
+                self.weights = np.mean(weights, axis=0)
+
+            print("\tStacking ensemble weights:", np.round(self.weights, 4))
 
             if self.visualize:
                 # Visualize weight distribution:
                 plt.pie(self.weights, labels=[f"{i}" for i in range(len(self.weights))])
                 plt.show()
-        # elif self.ensemble_strategy == "top1constraint":
-        #     # Get the single best model, based on the average of the evaluation metrics:
-        #     trial_values = np.array(
-        #         [trial.values if trial.state == optuna.trial.TrialState.COMPLETE else [np.nan] * len(self.evaluators)
-        #          for trial in self.study.trials])
-        #
-        #     # trial_percentiles = np.zeros_like(trial_values)
-        #     # for i in range(trial_values.shape[0]):
-        #     #     for j in range(trial_values.shape[1]):
-        #     #         trial_percentiles[i, j] = percentileofscore(a=trial_values[:, j], score=trial_values[i, j],
-        #     #                                                     kind="weak")
-        #
-        #     percentiles = np.arange(1, 100, 1)
-        #
-        #     metric_percentiles = np.percentile(trial_values, q=percentiles, axis=0)
-        #
-        #     # For each trial, check the percentile rank of each metric:
-        #     trial_percentiles = np.zeros(trial_values.shape)
-        #     for i in range(trial_values.shape[0]):
-        #         if self.opt_direction == "minimize":
-        #             trial_percentiles[i] = np.mean(trial_values[i] <= metric_percentiles, axis=0)
-        #         else:
-        #             trial_percentiles[i] = np.mean(trial_values[i] >= metric_percentiles, axis=0)
-        #
-        #     # The best trial is the trial with the highest min percentile rank over all metrics:
-        #     trial_max_percentiles = np.min(trial_percentiles, axis=1)
-        #     best_trial = self.study.trials[np.argmax(trial_max_percentiles)]
-        #
-        #     # Load best model and refit it on the entire training data
-        #     best_metalearner = best_trial.user_attrs["metalearner"]
-        #     best_prop_model = best_trial.user_attrs.get("prop_model", None)
-        #     best_preprocess_pipeline = best_trial.user_attrs["preprocess_pipeline"]
-        #     best_preprocess_pipeline.fit(X, y)
-        #     best_model = best_trial.user_attrs["cate_model"]
-        #     if best_metalearner in ["R", "DR", "X", "Z", "U", "F"]:
-        #         X_trans = best_preprocess_pipeline.transform(X)
-        #         best_prop_model.fit(X_trans, t)
-        #         best_prop_est = best_prop_model.predict_proba(X_trans)[:, 1]
-        #         best_prop_est = np.clip(best_prop_est, self.CLIP, 1 - self.CLIP)
-        #         best_model.fit(X_trans, t, y, p=best_prop_est)
-        #     else:
-        #         best_model.fit(best_preprocess_pipeline.transform(X), t, y)
-        #
-        #     self.best_prop_models = [best_prop_model]
-        #     self.best_preprocess_pipelines = [best_preprocess_pipeline]
-        #     self.best_models = [best_model]
-        #
-        #     print("\tBest trial:\n", best_trial.number)
-        #     print("\tBest prop model:\n", best_prop_model)
-        #     print("\tBest preprocess pipeline:\n", best_preprocess_pipeline)
-        #     print("\tBest model:\n", best_model)
         else:
             raise ValueError(
                 "Invalid ensemble strategy. Please choose one of the following: 'pareto', 'top1average', "
